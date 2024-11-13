@@ -1,5 +1,5 @@
-const dotenv = require("dotenv");
-const { google } = require("googleapis");
+import dotenv from "dotenv";
+import { google } from "googleapis";
 
 dotenv.config();
 
@@ -8,7 +8,6 @@ const private_key = process.env.PRIVATE_KEY;
 
 if (!client_email || !private_key) {
   console.log("client_email or private key error");
-  return 0;
 }
 
 const auth = new google.auth.JWT(client_email, null, private_key, [
@@ -69,4 +68,4 @@ function getJson(row) {
   return data;
 }
 
-module.exports = { list };
+export { list };

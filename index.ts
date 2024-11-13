@@ -1,8 +1,16 @@
-const Discord = require("discord.js");
-const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
-const dotenv = require("dotenv");
-const sheet = require("./sheet.js");
-const { searchModal } = require("./modal.js");
+import {
+  Client,
+  Interaction,
+  MessageActionRow,
+  MessageButton,
+  ModalSubmitInteraction,
+} from "discord.js";
+import * as sheet from "./sheet";
+import dotenv from "dotenv";
+import { searchModal } from "./modal";
+import { ActionRowBuilder, ButtonBuilder } from "@discordjs/builders";
+
+const client = new Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
 
 dotenv.config();
 
@@ -17,7 +25,6 @@ if (process.env.TOKEN == null) {
   sleep(60000).then(() =>
     console.log("Service is getting stopped automatically")
   );
-  return 0;
 }
 
 const discordLogin = async () => {
@@ -53,12 +60,19 @@ client.on("messageCreate", async (msg) => {
     }
 
     if (msg.content === PREFIX + "search") {
+      const button = new MessageButton()
+        .setCustomId("openModal")
+        .setLabel("여기를 클릭 후, 단어를 입력하세요 :)")
+        .setStyle(1);
+
+      const actionRow = new MessageActionRow().addComponents(button);
+
+      // 버튼이 포함된 메시지 전송
       await msg.channel.send({
-        content: "여기를 클릭 후, 단어를 입력하세요 :)",
-        components: [searchModal()],
+        content: "아래 버튼을 클릭하여 단어를 입력해 주세요.",
+        components: [actionRow],
       });
     }
-
     if (msg.content === PREFIX + "find")
       if (msg.content === PREFIX + "info") {
         console.log(msg);
@@ -69,13 +83,13 @@ client.on("messageCreate", async (msg) => {
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.customId === "searchModal") {
+  if (interaction.isModalSubmit()) {
     const keyword = interaction.fields.getTextInputValue("keywordInput"); // 입력한 keyword 값 가져오기
     if (!keyword) return interaction.reply("단어를 입력하세요!");
 
     try {
       const _keyword = keyword.split("").join("");
-      const data = await list(); // 모든 데이터를 가져옴
+      const data = await sheet.list(); // 모든 데이터를 가져옴
       const results = data.filter((item) => item.keyword === _keyword); // 키워드로 검색
 
       if (results.length > 0) {
