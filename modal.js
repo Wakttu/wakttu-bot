@@ -1,3 +1,5 @@
+const { TextInputStyle } = require("discord.js");
+
 const {
   ModalBuilder,
   TextInputBuilder,
@@ -14,7 +16,7 @@ function searchModal() {
   const input = new TextInputBuilder()
     .setCustomId("keywordInput")
     .setLabel("찾고 싶은 단어를 입력해보세요!: ")
-    .setStyle(TextInputStyle.Short);
+    .setStyle(TextInputStyle.);
 
   // 모달에 입력 필드를 추가
   const row = new ActionRowBuilder().addComponents(input);
