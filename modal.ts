@@ -9,8 +9,6 @@ function searchModal() {
     .setCustomId("searchModal")
     .setTitle("단어 찾기!");
 
-  console.log("check");
-
   // 텍스트 입력 필드 생성
   const input = new TextInputBuilder()
     .setCustomId("keywordInput")

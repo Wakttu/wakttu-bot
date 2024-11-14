@@ -1,26 +1,29 @@
 import {
   Client,
-  Interaction,
-  MessageActionRow,
-  MessageButton,
-  ModalSubmitInteraction,
+  GatewayIntentBits,
+  ActionRowBuilder,
+  ButtonBuilder,
+  MessageActionRowComponentBuilder,
 } from "discord.js";
 import * as sheet from "./sheet";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 import { searchModal } from "./modal";
-import { ActionRowBuilder, ButtonBuilder } from "@discordjs/builders";
-
-const client = new Client({ intents: ["GUILDS", "GUILD_MESSAGES"] });
 
 dotenv.config();
 
-const PREFIX = process.env.PREFIX;
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent, // 추가
+  ],
+});
 
-const sleep = (ms) => {
-  return new Promise((r) => setTimeout(r, ms));
-};
+const PREFIX = process.env.PREFIX || "!";
 
-if (process.env.TOKEN == null) {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+if (!process.env.TOKEN) {
   console.log("An discord token is empty.");
   sleep(60000).then(() =>
     console.log("Service is getting stopped automatically")
@@ -30,7 +33,7 @@ if (process.env.TOKEN == null) {
 const discordLogin = async () => {
   try {
     await client.login(process.env.TOKEN);
-  } catch (TOKEN_INVALID) {
+  } catch (error) {
     console.log("An invalid token was provided");
     sleep(60000).then(() =>
       console.log("Service is getting stopped automatically")
@@ -60,69 +63,76 @@ client.on("messageCreate", async (msg) => {
     }
 
     if (msg.content === PREFIX + "search") {
-      const button = new MessageButton()
+      const button = new ButtonBuilder()
         .setCustomId("openModal")
-        .setLabel("여기를 클릭 후, 단어를 입력하세요 :)")
+        .setLabel("모달 오픈!")
         .setStyle(1);
 
-      const actionRow = new MessageActionRow().addComponents(button);
+      const actionRow =
+        new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+          button
+        );
 
-      // 버튼이 포함된 메시지 전송
-      await msg.channel.send({
-        content: "아래 버튼을 클릭하여 단어를 입력해 주세요.",
+      await msg.reply({
+        content: "버튼을 눌러 모달을 열어보세요.",
         components: [actionRow],
       });
     }
-    if (msg.content === PREFIX + "find")
-      if (msg.content === PREFIX + "info") {
-        console.log(msg);
-      }
+
+    if (msg.content === PREFIX + "find") {
+      // find 명령어 구현
+    }
+
+    if (msg.content === PREFIX + "info") {
+      console.log(msg);
+    }
   } catch (e) {
     console.log(e);
   }
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (interaction.isModalSubmit()) {
-    const keyword = interaction.fields.getTextInputValue("keywordInput"); // 입력한 keyword 값 가져오기
+  if (interaction.isButton() && interaction.customId === "openModal") {
+    await interaction.showModal(searchModal());
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId === "searchModal") {
+    const keyword = interaction.fields.getTextInputValue("keywordInput");
     if (!keyword) return interaction.reply("단어를 입력하세요!");
+
+    // 여기서 기본 응답을 지연
+    await interaction.deferReply();
 
     try {
       const _keyword = keyword.split("").join("");
-      const data = await sheet.list(); // 모든 데이터를 가져옴
-      const results = data.filter((item) => item.keyword === _keyword); // 키워드로 검색
+      const data = await sheet.list();
+      const results = data.filter((item) => item.keyword === _keyword);
 
       if (results.length > 0) {
-        // 검색 결과가 여러 개 있는 경우 응답을 배열로 정리
-        let replyMessage = `Found ${results.length} results for **${keyword}**:\n\n`;
-
+        let replyMessage = `검색결과 : ${results.length}개\n\n`;
         results.forEach((result, index) => {
           replyMessage += `
-                    **Result ${index + 1}:**
-                    **Keyword**: ${result.keyword}
-                    **Mean**: ${result.mean}
-                    **Info**: ${result.info}
-                    **Tags**: ${result.tag.join(", ")}
-                    **URL**: ${result.url ? result.url.join(", ") : "No URL"}
-                    **BGM**: ${result.bgm ? voiceURL(result.bgm) : "No URL"}
-                    **Type**: ${result.type}\n\n
-                `;
+          단어: ${result.keyword}
+          뜻: ${result.mean}
+          정보: ${result.info}
+          태그: ${result.tag.join(", ")}
+          URL: ${result.url ? result.url.join(", ") : "No URL"}
+          BGM: ${result.bgm ? voiceURL(result.bgm) : "No URL"}
+          Type: ${result.type}\n\n`;
         });
 
         if (replyMessage.length > 2000) {
-          // Discord 메시지 제한(2000자)을 넘는 경우
           replyMessage =
             "Too many results to display in one message. Please refine your search.";
         }
 
-        await interaction.reply(replyMessage);
+        await interaction.editReply(replyMessage);
       } else {
-        // 검색 결과가 없을 때 응답
-        interaction.reply(`해당하는 단어가 없어유: ${keyword}`);
+        await interaction.editReply(`해당하는 단어가 없어유: ${keyword}`);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
-      interaction.reply("There was an error fetching the data.");
+      await interaction.editReply("There was an error fetching the data.");
     }
   }
 });

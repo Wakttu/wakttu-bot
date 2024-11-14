@@ -18,6 +18,7 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "moduleResolution": "Node",
+    "esModuleInterop": true,
     "typeRoots": ["/types ", "./node_modules/@types"]
   }
 }
